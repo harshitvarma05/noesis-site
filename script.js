@@ -60,14 +60,13 @@ const loaderBarFill = document.querySelector('.loader-bar-fill');
     const first = sources[0];
     if (!first) return hideLoader(0);
 
-    // Prefer webp if TRY_WEBP; set <picture> srcs immediately
-    if (TRY_WEBP) {
-        const s = document.createElement('source');
-        s.type = 'image/webp';
-        s.srcset = first.webp;
-        loaderPic.prepend(s);
+    // If browser supports WebP and you have WebP files, show WebP on the loader.
+    if (TRY_WEBP && SUPPORTS_WEBP) {
+        // No need for <source>; just set the img to webp directly for the loader
+        loaderImg.src = first.webp;
+    } else {
+        loaderImg.src = first.png; // fallback
     }
-    loaderImg.src = first.png;
     loaderImg.setAttribute('fetchpriority', 'high');
 })();
 
@@ -91,12 +90,28 @@ function hideLoader(delay=150){
 (function preloadFirstN(){
     for (let i = 0; i < preloadTotal; i++) {
         const { png, webp } = sources[i];
+        const url = (TRY_WEBP && SUPPORTS_WEBP) ? webp : png;
         const im = new Image();
         im.onload = im.onerror = () => { preloadLoaded++; updateLoaderProgress(); };
-        // Use PNG for the actual network warm-up (universal)
-        im.src = png;
+        im.decoding = 'async';
+        im.loading = 'eager';
+        im.src = url;
     }
 })();
+
+// Prefetch the *next* page lightly
+function prefetchNext(i){
+    if (i >= PAGE_COUNT) return;
+    const { png, webp } = sources[i];
+    const url = (TRY_WEBP && SUPPORTS_WEBP) ? webp : png;
+    const task = () => {
+        const im = new Image();
+        im.decoding = 'async';
+        im.loading = 'eager';
+        im.src = url;
+    };
+    (window.requestIdleCallback || setTimeout)(task, 150);
+}
 
 /**** Viewport-based loading for the rest ****/
 const pictureIO = new IntersectionObserver((entries) => {
