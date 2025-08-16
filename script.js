@@ -1,23 +1,21 @@
 /**** CONFIG ****/
-const SUPPORTS_WEBP = (function(){
-    try {
-        const c = document.createElement('canvas');
+const PAGE_COUNT    = 15;    // total brochure pages
+const ZERO_BASED    = true;  // true if page-00.png exists; false if page-01.png
+const TRY_WEBP      = true;  // set true if you also upload .webp alongside .png
+const PRELOAD_COUNT = 5;     // how many pages to preload for the loader progress
+
+/* Detect WebP support (once) */
+const SUPPORTS_WEBP = (() => {
+    try { const c = document.createElement('canvas');
         return !!(c.getContext && c.toDataURL('image/webp').indexOf('data:image/webp') === 0);
     } catch { return false; }
 })();
-const PAGE_COUNT   = 15;     // total brochure pages
-const ZERO_BASED   = true;   // true if page-00.png exists, else false for page-01.png
-const USE_BLUR     = true;   // blur looks nice but is heavy; auto-off on low-power
-const PARALLAX_AMT = 12;     // subtle vertical parallax in px
-const TRY_WEBP     = true;   // set true IF you also upload .webp alongside .png
-const PRELOAD_COUNT = 3;     // how many pages to preload for the loader progress
-
-/**** Helpers ****/
-const pad2 = n => String(n).padStart(2,'0');
 
 /**** Build scenes (no extra content, just your images) ****/
 const app = document.getElementById('app');
-const sources = []; // per-page URL refs (png/webp)
+const sources = []; // per-page {png, webp}
+
+const pad2 = n => String(n).padStart(2,'0');
 
 for (let i = 0; i < PAGE_COUNT; i++) {
     const n = ZERO_BASED ? i : i + 1;
@@ -42,78 +40,41 @@ for (let i = 0; i < PAGE_COUNT; i++) {
     sources.push({ png, webp, idx: i });
 }
 
-/**** Device/connection heuristics ****/
-const conn = navigator.connection || {};
-const lowPower =
-    (navigator.deviceMemory && navigator.deviceMemory <= 2) ||
-    ['slow-2g','2g'].includes(conn.effectiveType) ||
-    matchMedia('(prefers-reduced-motion: reduce)').matches;
-const enableBlur = USE_BLUR && !lowPower;
-
-/**** Loader: show page 1 and a progress bar until a few pages are warm ****/
+/**** Loader (page 1 preview + progress bar) ****/
 const loaderEl = document.getElementById('loader');
 const loaderImg = document.getElementById('loader-img');
-const loaderPic = document.getElementById('loader-picture');
 const loaderBarFill = document.querySelector('.loader-bar-fill');
 
 (function initLoaderFirstPage(){
     const first = sources[0];
     if (!first) return hideLoader(0);
-
-    // If browser supports WebP and you have WebP files, show WebP on the loader.
-    if (TRY_WEBP && SUPPORTS_WEBP) {
-        // No need for <source>; just set the img to webp directly for the loader
-        loaderImg.src = first.webp;
-    } else {
-        loaderImg.src = first.png; // fallback
-    }
+    const url = (TRY_WEBP && SUPPORTS_WEBP) ? first.webp : first.png;
+    loaderImg.src = url;
     loaderImg.setAttribute('fetchpriority', 'high');
 })();
 
-// Preload first N pages to drive the progress bar
 let preloadLoaded = 0;
 const preloadTotal = Math.min(PRELOAD_COUNT, PAGE_COUNT);
 
 function updateLoaderProgress(){
     const pct = Math.round((preloadLoaded / preloadTotal) * 100);
-    loaderBarFill.style.width = Math.max(5, pct) + '%'; // always show some movement
-    if (preloadLoaded >= preloadTotal) {
-        // let it breathe for a tick so users see 100%
-        setTimeout(() => hideLoader(200), 150);
-    }
+    loaderBarFill.style.width = Math.max(10, pct) + '%';
+    if (preloadLoaded >= preloadTotal) setTimeout(() => hideLoader(200), 150);
 }
-function hideLoader(delay=150){
-    setTimeout(() => loaderEl?.classList.add('hidden'), delay);
-}
+function hideLoader(delay=150){ setTimeout(() => loaderEl?.classList.add('hidden'), delay); }
 
-// Start preloading first N pages (cached for later scenes)
+// Preload first N (prefer WebP if supported)
 (function preloadFirstN(){
     for (let i = 0; i < preloadTotal; i++) {
         const { png, webp } = sources[i];
         const url = (TRY_WEBP && SUPPORTS_WEBP) ? webp : png;
         const im = new Image();
         im.onload = im.onerror = () => { preloadLoaded++; updateLoaderProgress(); };
-        im.decoding = 'async';
-        im.loading = 'eager';
-        im.src = url;
+        im.decoding = 'async'; im.loading = 'eager'; im.src = url;
     }
 })();
 
-// Prefetch the *next* page lightly
-function prefetchNext(i){
-    if (i >= PAGE_COUNT) return;
-    const { png, webp } = sources[i];
-    const url = (TRY_WEBP && SUPPORTS_WEBP) ? webp : png;
-    const task = () => {
-        const im = new Image();
-        im.decoding = 'async';
-        im.loading = 'eager';
-        im.src = url;
-    };
-    (window.requestIdleCallback || setTimeout)(task, 150);
-}
-
-/**** Viewport-based loading for the rest ****/
+/**** Lazy-load when scenes approach ****/
 const pictureIO = new IntersectionObserver((entries) => {
     entries.forEach(e => {
         if (!e.isIntersecting) return;
@@ -121,18 +82,14 @@ const pictureIO = new IntersectionObserver((entries) => {
         const img = pic.querySelector('img');
         const source = pic.querySelector('source[type="image/webp"]');
 
-        // upgrade to real URLs once near viewport
         if (source && source.getAttribute('data-srcset')) {
             source.setAttribute('srcset', source.getAttribute('data-srcset'));
             source.removeAttribute('data-srcset');
         }
         const dataSrc = img.getAttribute('data-src');
-        if (dataSrc) {
-            img.setAttribute('src', dataSrc);
-            img.removeAttribute('data-src');
-        }
+        if (dataSrc) { img.setAttribute('src', dataSrc); img.removeAttribute('data-src'); }
 
-        // prefetch the next page lightly
+        // prefetch next page lightly (WebP if supported)
         const idx = Number(pic.closest('.scene')?.dataset.idx || 0);
         prefetchNext(idx + 1);
 
@@ -144,41 +101,33 @@ document.querySelectorAll('.page-figure picture').forEach(p => pictureIO.observe
 
 function prefetchNext(i){
     if (i >= PAGE_COUNT) return;
-    const { png } = sources[i];
-    const task = () => {
-        const im = new Image();
-        im.decoding = 'async';
-        im.loading = 'eager';
-        im.src = png;
-    };
+    const { png, webp } = sources[i];
+    const url = (TRY_WEBP && SUPPORTS_WEBP) ? webp : png;
+    const task = () => { const im = new Image(); im.decoding = 'async'; im.src = url; };
     (window.requestIdleCallback || setTimeout)(task, 150);
 }
 
-/**** Fit-mode to prevent cropping/letterboxing ****/
+/**** Fit-to-device (avoid cropping/letterboxing) ****/
 function applyFitModes(){
     const vw = innerWidth, vh = innerHeight, vAspect = vh / vw;
     document.querySelectorAll('.page-figure img').forEach(img => {
         const fig = img.closest('.page-figure');
-        if (!img.complete || !img.naturalWidth) {
-            img.addEventListener('load', applyFitModes, { once:true });
-            return;
-        }
+        if (!img.complete || !img.naturalWidth) { img.addEventListener('load', applyFitModes, { once:true }); return; }
         const iAspect = img.naturalHeight / img.naturalWidth;
         fig.classList.toggle('fit-height', iAspect > vAspect);
         fig.classList.toggle('fit-width',  iAspect <= vAspect);
     });
 }
+addEventListener('resize', applyFitModes, { passive:true });
+addEventListener('orientationchange', applyFitModes);
 
-/**** Animate only visible scenes ****/
+/**** Opacity-only animation (no blur, no parallax, no transforms) ****/
 const scenes = [...document.querySelectorAll('.scene')];
 let active = new Set();
 let rafId  = null;
 
 const sceneIO = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-        if (e.isIntersecting) active.add(e.target);
-        else active.delete(e.target);
-    });
+    entries.forEach(e => { if (e.isIntersecting) active.add(e.target); else active.delete(e.target); });
     tick();
 }, { root: null, rootMargin: '40% 0px 40% 0px', threshold: 0 });
 scenes.forEach(s => sceneIO.observe(s));
@@ -188,35 +137,17 @@ function easeInOut(t){ return t*t*(3 - 2*t); }
 
 function render(){
     const vh = innerHeight;
-    let topMostIdx = 0, topMostY = Infinity;
-
     active.forEach(scene => {
         const fig = scene.querySelector('.page-figure');
         if (!fig) return;
-
         const r = scene.getBoundingClientRect();
         const total = r.height - vh;
         const tRaw  = clamp((0 - r.top) / (total || 1), 0, 1);
         const t     = easeInOut(tRaw);
-
-        const alpha = t < 0.5 ? 0.2 + t*1.6 : 1.2 - t*0.8;
-        const scale = 1.08 - t*0.08;
-        const y     = (1 - t) * 40 - t * 40;
-        const blur  = (USE_BLUR && !lowPower) ? (t < 0.8 ? 0 : (t-0.8)*20) : 0;
-
-        const idx = Number(scene.dataset.idx || 0);
-        const parallax = (idx % 2 === 0 ? 1 : -1) * (PARALLAX_AMT * (t - 0.5));
-
-        fig.style.setProperty('--alpha', alpha.toFixed(3));
-        fig.style.setProperty('--scale',  scale.toFixed(3));
-        fig.style.setProperty('--y',      `${(y + parallax).toFixed(1)}px`);
-        fig.style.setProperty('--blur',   `${blur.toFixed(1)}px`);
-
-        if (Math.abs(r.top) < topMostY) { topMostY = Math.abs(r.top); topMostIdx = idx; }
+        /* Fade in to 1, then down slightly to 0.2 near exit (pure opacity) */
+        const alpha = t < 0.1 ? (0.1+ t*0.6) : (0.8 - t*0.2);
+        fig.style.opacity = alpha.toFixed(3);
     });
-
-    document.body.style.setProperty('--mix', (topMostIdx % 2 ? 1 : 0));
-    document.body.style.setProperty('--scene-idx', topMostIdx);
 }
 
 function tick(){
@@ -225,15 +156,7 @@ function tick(){
     rafId = requestAnimationFrame(() => { rafId = null; render(); });
 }
 
-/**** Kickoff ****/
+/* Kickoff */
 applyFitModes();
 tick();
 addEventListener('scroll', tick, { passive:true });
-addEventListener('resize', () => { applyFitModes(); tick(); }, { passive:true });
-addEventListener('orientationchange', () => { applyFitModes(); tick(); });
-
-/* Also hide loader once the first image itself has fully painted (safety) */
-loaderImg?.addEventListener('load', () => {
-    // ensure the bar advances at least a bit on fast connections
-    loaderBarFill.style.width = Math.max(parseInt(loaderBarFill.style.width)||0, 30) + '%';
-});

@@ -7,7 +7,7 @@
     <meta name="description" content="Scroll to explore the Noesis brochure.">
     <link rel="stylesheet" href="styles.css">
 
-    <!-- Preload first page for instant paint (adjust if your files start at 01) -->
+    <!-- Preload first page for instant paint (adjust name if one-based) -->
     <link rel="preload" as="image" href="assets/pages/page-00.png">
 </head>
 <body>
@@ -15,20 +15,17 @@
 <!-- Loader overlay -->
 <div id="loader" aria-hidden="true">
     <div class="loader-top">
-        <!-- Replace with your actual logo file if you have one -->
-        <div class="loader-bar"><span class="loader-bar-fill" style="width:0%"></span></div>
+        <!-- Replace logo.svg with your own (optional). If missing, fallback text shows. -->
+        <div class="loader-bar"><span class="loader-bar-fill"></span></div>
     </div>
 
     <figure class="loader-page">
-        <!-- We’ll set src via JS so ZERO_BASED/WEBP settings apply -->
-        <picture id="loader-picture">
-            <img id="loader-img" alt="Loading brochure…" />
-        </picture>
+        <img id="loader-img" alt="Loading brochure…">
     </figure>
 </div>
 
-<!-- Main app -->
-<main class="scrolly" id="app"></main>
+<!-- Main content gets injected by JS -->
+<main id="app"></main>
 <script src="script.js"></script>
 </body>
 </html>
