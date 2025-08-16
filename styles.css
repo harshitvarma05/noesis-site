@@ -1,25 +1,67 @@
+/* define vars so editors stop warning, and to allow sane defaults */
+:root{
+    --y: 0px;
+    --scale: 1;
+    --blur: 0px;
+    --alpha: 1;
+    --scene-idx: 0;
+    --mix: 0; /* 0 or 1, set by JS */
+
+    /* accent tones for the subtle background */
+    --bg1:  #0b0c0f;
+    --t1a: rgba(61,214,198,.10);
+    --t1b: rgba(122,162,247,.10);
+    --bg2:  #0c0e12;
+    --t2a: rgba(255,179,71,.10);
+    --t2b: rgba(255,99,132,.09);
+}
+
 * { box-sizing: border-box; }
 html, body { margin:0; padding:0; background:#0b0c0f; color:#e6e6e6; }
 img { display:block; width:100%; height:auto; }
 
 .scrolly { width:min(1100px, 100vw); margin:0 auto; }
+.scene   { position:relative; min-height:160vh; border-bottom:1px solid rgba(255,255,255,0.06); }
+.sticky  { position:sticky; top:0; height:100vh; display:grid; place-items:center; overflow:hidden; }
 
-.scene { position:relative; min-height:180vh; border-bottom:1px solid rgba(255,255,255,0.06); }
-.sticky { position:sticky; top:0; height:100vh; display:grid; place-items:center; overflow:hidden; }
-
-.page-figure {
-  margin:0; width:min(1000px, 92vw); transform-origin:center;
-  transform: translateY(var(--y,0px)) scale(var(--scale,1));
-  filter: blur(var(--blur,0px)); opacity: var(--alpha,1);
-  transition: transform .05s linear, opacity .05s linear, filter .05s linear;
-  will-change: transform, opacity, filter;
-  box-shadow: 0 30px 120px rgba(0,0,0,.45); border-radius:10px; background:#0e1016;
+.page-figure{
+    margin:0;
+    width:min(1000px, 92vw);
+    transform-origin:center;
+    transform: translateY(var(--y)) scale(var(--scale));
+    filter: blur(var(--blur));
+    opacity: var(--alpha);
+    transition: transform .05s linear, opacity .05s linear, filter .05s linear;
+    will-change: transform, opacity, filter;
+    box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    border-radius:10px;
+    background:#0e1016;
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
 }
 
-body::before {
-  content:""; position:fixed; inset:0; pointer-events:none; z-index:-1;
-  background:
-    radial-gradient(900px 500px at 15% 0%, rgba(61,214,198,.10), transparent),
-    radial-gradient(700px 400px at 85% 20%, rgba(122,162,247,.10), transparent),
-    radial-gradient(1200px 800px at 50% 120%, rgba(0,0,0,.5), transparent);
+/* subtle gradient background with hue shift driven by --mix */
+body::before{
+    content:"";
+    position:fixed; inset:0;
+    pointer-events:none; z-index:-1;
+    background:
+            radial-gradient(900px 500px at 15% 0%, var(--t1a), transparent),
+            radial-gradient(700px 400px at 85% 20%, var(--t1b), transparent),
+            radial-gradient(1200px 800px at 50% 120%, rgba(0,0,0,.45), transparent);
+    transition: filter .3s linear;
+}
+@media (prefers-reduced-motion:no-preference){
+    body::before{ filter: hue-rotate(calc(var(--mix) * 20deg)); }
+}
+
+/* mobile tweaks */
+@media (max-width: 768px){
+    .scene{ min-height: 140vh; }
+    .page-figure{ width:min(960px, 96vw); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+}
+
+/* accessibility */
+@media (prefers-reduced-motion: reduce){
+    .page-figure{ transition: none; filter: none !important; }
 }
