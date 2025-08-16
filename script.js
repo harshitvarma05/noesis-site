@@ -1,7 +1,7 @@
 /**** CONFIG ****/
 const PAGE_COUNT      = 15;   // total brochure pages
 const ZERO_BASED      = true; // true if page-00.png exists; false if page-01.png
-const TRY_WEBP        = true; // true if you also upload .webp alongside .png
+const TRY_WEBP        = true; // true if you also upload .webp files
 const PRELOAD_FIRSTN  = 7;    // loader waits for pages 1..N in SEQUENCE
 
 /**** UTIL ****/
@@ -14,6 +14,11 @@ const SUPPORTS_WEBP = (() => {
         return !!(c.getContext && c.toDataURL('image/webp').indexOf('data:image/webp') === 0);
     } catch { return false; }
 })();
+
+/* Network hints */
+const conn = navigator.connection || {};
+const SAVE_DATA = !!conn.saveData;
+const VERY_SLOW = ['slow-2g','2g'].includes(conn.effectiveType);
 
 /**** Build scenes (no extra content, just your images) ****/
 const app = document.getElementById('app');
@@ -56,6 +61,9 @@ function hydrateScene(idx){
     const source = pic.querySelector('source[type="image/webp"]');
     const { png, webp } = sources[idx];
 
+    // already hydrated?
+    if (!img.getAttribute('data-src')) return;
+
     const useWebp = TRY_WEBP && SUPPORTS_WEBP && !!source;
     if (useWebp) {
         source.setAttribute('srcset', webp);
@@ -66,15 +74,15 @@ function hydrateScene(idx){
     }
     img.removeAttribute('data-src');
 
-    // Priority hint for above-the-fold images
+    // Priority hint for the first couple of pages
     if (idx <= 1) img.setAttribute('fetchpriority', 'high');
 
-    // Ensure fit mode adjusts once the image dimensions are known
+    // Fit mode once dimensions known
     if (img.complete) applyFitModes();
     else img.addEventListener('load', applyFitModes, { once:true });
 }
 
-/**** Sequential preload for the first N pages (in order) ****/
+/**** Sequential preload for the first N pages (loader) ****/
 const MUST_PRELOAD = Math.min(PRELOAD_FIRSTN, PAGE_COUNT);
 let currentPreload = 0;
 
@@ -84,6 +92,8 @@ function updateLoaderBar(){
     if (currentPreload >= MUST_PRELOAD) {
         // Hide loader immediately (no fade)
         loaderEl.style.display = 'none';
+        // Start background preload of the rest
+        startBackgroundPreload();
     }
 }
 
@@ -116,33 +126,52 @@ function preloadNextInOrder(){
     probe.onerror = done;      // count error to avoid stalling
 }
 
-// Kick off the sequential chain
+// Kick off the sequential chain for the loader
 preloadNextInOrder();
 
-/**** Lazy-load remaining scenes when they approach (skip already hydrated) ****/
+/**** Background preload for remaining pages (in order) ****/
+function startBackgroundPreload(){
+    // Be gentle on very slow networks or when Save-Data is on
+    if (SAVE_DATA || VERY_SLOW) return;
+
+    let idx = MUST_PRELOAD; // start from the next page after the loader batch
+
+    const step = () => {
+        if (idx >= PAGE_COUNT) return;
+
+        const { png, webp } = sources[idx];
+        const url = (TRY_WEBP && SUPPORTS_WEBP) ? webp : png;
+
+        const img = new Image();
+        img.decoding = 'async';
+        img.loading  = 'eager';
+        img.src = url;
+
+        const done = () => {
+            hydrateScene(idx); // hydrate so it’s ready in DOM
+            idx++;
+            // Use idle time between steps to stay responsive
+            (window.requestIdleCallback || setTimeout)(step, 100);
+        };
+
+        img.onload  = done;
+        img.onerror = done;
+    };
+
+    // kick background chain
+    (window.requestIdleCallback || setTimeout)(step, 100);
+}
+
+/**** IntersectionObserver (still there as a safety net) ****/
 const pictureIO = new IntersectionObserver((entries) => {
     entries.forEach(e => {
         if (!e.isIntersecting) return;
         const pic = e.target;
         const img = pic.querySelector('img');
-        const source = pic.querySelector('source[type="image/webp"]');
-        const idx = Number(pic.closest('.scene')?.dataset.idx || 0);
-
-        // If already hydrated by the loader step, skip
+        // If already hydrated (no data-src), skip
         if (!img.getAttribute('data-src')) { pictureIO.unobserve(pic); return; }
-
-        const { png, webp } = sources[idx];
-        const useWebp = TRY_WEBP && SUPPORTS_WEBP && !!source;
-
-        if (useWebp) {
-            source.setAttribute('srcset', webp);
-            source.removeAttribute('data-srcset');
-            img.setAttribute('src', webp);
-        } else {
-            img.setAttribute('src', png);
-        }
-        img.removeAttribute('data-src');
-
+        const idx = Number(pic.closest('.scene')?.dataset.idx || 0);
+        hydrateScene(idx);
         pictureIO.unobserve(pic);
     });
 }, { root: null, rootMargin: '200% 0px 200% 0px', threshold: 0 });
@@ -167,4 +196,4 @@ function applyFitModes(){
 addEventListener('resize', applyFitModes, { passive:true });
 addEventListener('orientationchange', applyFitModes);
 
-/* No scroll animations anymore (no fade/parallax/blur) */
+/* No scroll animations (no fade/parallax/blur) */
