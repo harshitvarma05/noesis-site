@@ -178,7 +178,7 @@ function render(){
         const total = r.height - vh;
         const tRaw  = clamp((0 - r.top) / (total || 1), 0, 1);
         const t     = easeInOut(tRaw);
-        const alpha = t < 0.5 ? (0.2 + t*1.6) : (1.2 - t*0.8);
+        const alpha = t < 0.2 ? (0.1 + t*0.6) : (0.6 - t*0.2);
         fig.style.opacity = alpha.toFixed(3);
     });
 }
