@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Noesis MEP • Engineering the future of buildings</title>
+  <meta name="description" content="Noesis MEP — Innovative, sustainable and efficient MEP engineering across India: electrical, mechanical/HVAC, plumbing & firefighting, and renewable energy."/>
+  <link rel="preload" as="image" href="assets/logo.svg">
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header class="site-header">
+  <a href="#top" class="brand"><img src="assets/logo.svg" alt="Noesis MEP logo"/></a>
+  <button class="menu-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
+  <nav class="site-nav" aria-label="Main">
+    <a href="#about">About</a>
+    <a href="#services">Services</a>
+    <a href="#projects">Projects</a>
+    <a href="#clients">Clients</a>
+    <a href="#contact">Contact</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-inner">
+      <h1>Engineering the future of buildings</h1>
+      <p>We design and deliver MEP systems that create comfortable, healthy, and productive spaces for people to live, work, and play.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="#contact">Start a project</a>
+        <a class="btn ghost" href="#services">Explore services</a>
+      </div>
+      <div class="metrics" aria-label="Key statistics">
+        <div class="metric">
+          <div class="count" data-target="2011">2011</div>
+          <div class="label">Established</div>
+        </div>
+        <div class="metric">
+          <div class="count" data-target="20000000">2+ Cr</div>
+          <div class="label">Sq.ft executed</div>
+        </div>
+        <div class="metric">
+          <div class="count" data-target="320000">3.2 L</div>
+          <div class="label">Largest township (sq.ft)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="section about">
+    <div class="container">
+      <h2>About Noesis MEP</h2>
+      <p>Noesis provides design‑driven solutions and technical expertise for architects, builders, developers, and government agencies across India. Founded by <strong>Bhagyashri Varma</strong> (B.Arch, PGPCM, IIM‑C), we deliver integrated mechanical, electrical and plumbing solutions that are cost‑effective, code‑compliant, and sustainable.</p>
+      <details class="pdf-viewer">
+        <summary>View/download company brochure (PDF)</summary>
+        <iframe title="Noesis Brochure" src="NOESIS brochure new (2).pdf" loading="lazy"></iframe>
+        <p><a class="btn small" href="NOESIS brochure new (2).pdf" download>Download PDF</a></p>
+      </details>
+    </div>
+  </section>
+
+  <section id="services" class="section services">
+    <div class="container">
+      <h2>Services</h2>
+      <div class="accordion" id="services-acc">
+        <details>
+          <summary>Electrical Engineering</summary>
+          <ul class="bullets">
+            <li>Lighting systems &amp; controls, emergency lighting &amp; fire alarms</li>
+            <li>Low voltage equipment &amp; distribution, power distribution</li>
+            <li>Lifts &amp; escalators (specialist services), standby generator controls, UPS</li>
+            <li>Structured data wiring systems, CCTV / security / access control</li>
+            <li>Design of cables, transformers, LV/HV panels; BMS &amp; automation</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Plumbing &amp; Firefighting</summary>
+          <ul class="bullets">
+            <li>Water supply &amp; distribution, piping &amp; fixtures layout</li>
+            <li>STP, storm water &amp; drainage, hydrant &amp; sprinkler layout</li>
+            <li>FF pump room layout, fire alarm system design</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Mechanical / HVAC</summary>
+          <ul class="bullets">
+            <li>Central air conditioning</li>
+            <li>Natural &amp; mechanical ventilation</li>
+            <li>Gas‑based evaporation cooling, thermal storage systems</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Renewable &amp; Sustainability</summary>
+          <ul class="bullets">
+            <li>Solar hot water &amp; solar PV</li>
+            <li>Rainwater harvesting, waste management, vermiculture</li>
+            <li>Energy saving measures &amp; calculations</li>
+          </ul>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section id="projects" class="section projects">
+    <div class="container">
+      <h2>Selected Projects</h2>
+      <div class="filters" role="toolbar" aria-label="Project filters">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="residential">Residential</button>
+        <button class="chip" data-filter="commercial">Commercial</button>
+        <button class="chip" data-filter="hotel">Hotels</button>
+        <button class="chip" data-filter="datacenter">Data Centers</button>
+      </div>
+      <div class="grid" id="project-grid" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section id="clients" class="section clients">
+    <div class="container">
+      <h2>Clients</h2>
+      <div class="tag-cloud">
+        <span>High‑rise Towers</span>
+        <span>Residential Townships</span>
+        <span>Commercial Buildings</span>
+        <span>High‑end Interiors</span>
+        <span>Hotels</span>
+        <span>Data Centers</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="section contact">
+    <div class="container">
+      <h2>Contact</h2>
+      <p>Ready to build with us? Share a few details and we’ll get back within 1–2 business days.</p>
+      <form id="contact-form">
+        <div class="row">
+          <label>Full name
+            <input type="text" name="name" required/>
+          </label>
+          <label>Email
+            <input type="email" name="email" required/>
+          </label>
+        </div>
+        <div class="row">
+          <label>Company
+            <input type="text" name="company"/>
+          </label>
+          <label>Project type
+            <select name="type">
+              <option>Residential</option>
+              <option>Commercial</option>
+              <option>Hotel</option>
+              <option>Data Center</option>
+              <option>Other</option>
+            </select>
+          </label>
+        </div>
+        <label>Message
+          <textarea name="message" rows="5" required></textarea>
+        </label>
+        <div class="row">
+          <button class="btn primary" type="submit">Send enquiry</button>
+          <span class="form-note">This demo form opens your email client (no server required).</span>
+        </div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>© <span id="year"></span> Noesis MEP • All rights reserved.</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
