@@ -2,7 +2,7 @@
 const PAGE_COUNT    = 15;    // total brochure pages
 const ZERO_BASED    = true;  // true if page-00.png exists; false if page-01.png
 const TRY_WEBP      = true;  // set true if you also upload .webp alongside .png
-const PRELOAD_COUNT = 5;     // how many pages to preload for the loader progress
+const PRELOAD_COUNT = 10;     // how many pages to preload for the loader progress
 
 /* Detect WebP support (once) */
 const SUPPORTS_WEBP = (() => {
