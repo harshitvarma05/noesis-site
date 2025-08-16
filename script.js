@@ -2,7 +2,7 @@
 const PAGE_COUNT      = 15;   // total brochure pages
 const ZERO_BASED      = true; // true if page-00.png exists; false if page-01.png
 const TRY_WEBP        = true; // set true if you also upload .webp alongside .png
-const PRELOAD_FIRSTN  = 7;    // loader waits for pages 1..N in SEQUENCE
+const PRELOAD_FIRSTN  = 7;    // loader waits for pages 1 to N in SEQUENCE
 
 /**** UTIL ****/
 const pad2 = n => String(n).padStart(2,'0');
@@ -196,7 +196,7 @@ function render(){
         const total = r.height - vh;
         const tRaw  = clamp((0 - r.top) / (total || 1), 0, 1);
         const t     = easeInOut(tRaw);
-        const alpha = t < 0.5 ? (0.2 + t*1.6) : (1.2 - t*0.8); // 0.2 -> 1.0 -> 0.4
+        const alpha = t < 0.2 ? (0.1 + t*0.6) : (0.6 - t*0.4); // No idea how this works, but it controls the fade input
         fig.style.opacity = alpha.toFixed(3);
     });
 }
