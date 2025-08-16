@@ -3,15 +3,12 @@
 html, body { margin:0; padding:0; background:#0b0c0f; color:#e6e6e6; }
 img { display:block; width:100%; height:auto; }
 
-/* ===== Loader ===== */
+/* ===== Loader (no fade-out; JS sets display:none when done) ===== */
 #loader{
     position: fixed; inset: 0; z-index: 9999;
     display: grid; grid-template-rows: auto 1fr;
     background: #0b0c0f;
-    transition: opacity .3s ease, visibility .3s ease;
 }
-#loader.hidden{ opacity: 0; visibility: hidden; }
-
 .loader-top{
     display: grid; justify-items: center; align-content: start; gap: .5rem;
     padding: 1.25rem 1rem .75rem;
@@ -49,13 +46,11 @@ img { display:block; width:100%; height:auto; }
 .scene   { position:relative; min-height:160vh; border-bottom:1px solid rgba(255,255,255,0.06); }
 .sticky  { position:sticky; top:0; height:100vh; display:grid; place-items:center; overflow:hidden; }
 
-/* Figure (opacity-only animation) */
+/* Figure (no opacity/transform animations) */
 .page-figure{
     margin:0;
     width:auto;
     max-width:min(1000px, 96vw);
-    opacity: 0;                      /* will be driven by JS */
-    transition: opacity .08s linear; /* small smoothing */
     box-shadow: 0 18px 60px rgba(0,0,0,.35);
     border-radius:10px;
     background:#0e1016;
@@ -69,7 +64,7 @@ img { display:block; width:100%; height:auto; }
 .page-figure.fit-height img{ height:92vh; width:auto; max-width:96vw; }
 .page-figure.fit-width  img{ width:min(1000px, 96vw); max-height:92vh; }
 
-/* Subtle gradient background (no motion) */
+/* Subtle static background */
 body::before{
     content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
     background:

@@ -1,8 +1,8 @@
 /**** CONFIG ****/
 const PAGE_COUNT      = 15;   // total brochure pages
 const ZERO_BASED      = true; // true if page-00.png exists; false if page-01.png
-const TRY_WEBP        = true; // set true if you also upload .webp alongside .png
-const PRELOAD_FIRSTN  = 5;    // loader waits for pages 1 to N in SEQUENCE
+const TRY_WEBP        = true; // true if you also upload .webp alongside .png
+const PRELOAD_FIRSTN  = 7;    // loader waits for pages 1..N in SEQUENCE
 
 /**** UTIL ****/
 const pad2 = n => String(n).padStart(2,'0');
@@ -15,7 +15,7 @@ const SUPPORTS_WEBP = (() => {
     } catch { return false; }
 })();
 
-/**** Build scene DOM (no extra content, just your images) ****/
+/**** Build scenes (no extra content, just your images) ****/
 const app = document.getElementById('app');
 const sources = []; // per-page { png, webp }
 
@@ -47,10 +47,6 @@ const loaderEl      = document.getElementById('loader');
 const loaderImg     = document.getElementById('loader-img');
 const loaderBarFill = document.querySelector('.loader-bar-fill');
 
-function hideLoader(delay=200){
-    setTimeout(() => loaderEl?.classList.add('hidden'), delay);
-}
-
 /**** Hydrate a scene (set real src/srcset into its <picture>) ****/
 function hydrateScene(idx){
     const sec = document.querySelector(`.scene[data-idx="${idx}"]`);
@@ -61,7 +57,6 @@ function hydrateScene(idx){
     const { png, webp } = sources[idx];
 
     const useWebp = TRY_WEBP && SUPPORTS_WEBP && !!source;
-
     if (useWebp) {
         source.setAttribute('srcset', webp);
         source.removeAttribute('data-srcset');
@@ -71,11 +66,15 @@ function hydrateScene(idx){
     }
     img.removeAttribute('data-src');
 
-    // Higher priority for first couple of pages
+    // Priority hint for above-the-fold images
     if (idx <= 1) img.setAttribute('fetchpriority', 'high');
+
+    // Ensure fit mode adjusts once the image dimensions are known
+    if (img.complete) applyFitModes();
+    else img.addEventListener('load', applyFitModes, { once:true });
 }
 
-/**** Sequential preload for the first N pages ****/
+/**** Sequential preload for the first N pages (in order) ****/
 const MUST_PRELOAD = Math.min(PRELOAD_FIRSTN, PAGE_COUNT);
 let currentPreload = 0;
 
@@ -83,7 +82,8 @@ function updateLoaderBar(){
     const pct = Math.round((currentPreload / MUST_PRELOAD) * 100);
     loaderBarFill.style.width = pct + '%';
     if (currentPreload >= MUST_PRELOAD) {
-        hideLoader(250);
+        // Hide loader immediately (no fade)
+        loaderEl.style.display = 'none';
     }
 }
 
@@ -94,7 +94,7 @@ function preloadNextInOrder(){
     const { png, webp } = sources[idx];
     const url = (TRY_WEBP && SUPPORTS_WEBP) ? webp : png;
 
-    // For the loader preview (page 1)
+    // Show page-1 inside the loader preview
     if (idx === 0) {
         loaderImg.src = url;
         loaderImg.setAttribute('fetchpriority', 'high');
@@ -106,38 +106,31 @@ function preloadNextInOrder(){
     probe.src = url;
 
     const done = () => {
-        // Hydrate this page in the DOM so it’s display-ready
-        hydrateScene(idx);
-        // Update fit mode once the real <img> in the scene completes
-        const img = document.querySelector(`.scene[data-idx="${idx}"] img`);
-        if (img) {
-            if (img.complete) applyFitModes();
-            else img.addEventListener('load', applyFitModes, { once:true });
-        }
+        hydrateScene(idx);       // make this page display-ready
         currentPreload++;
-        updateLoaderBar();
-        preloadNextInOrder(); // chain to the next page
+        updateLoaderBar();       // update bar, then chain next
+        preloadNextInOrder();
     };
 
-    probe.onload = done;
-    probe.onerror = done; // count as done to avoid stalling the loader forever
+    probe.onload  = done;
+    probe.onerror = done;      // count error to avoid stalling
 }
 
 // Kick off the sequential chain
 preloadNextInOrder();
 
-/**** Lazy-load remaining scenes when they approach (skips already hydrated ones) ****/
+/**** Lazy-load remaining scenes when they approach (skip already hydrated) ****/
 const pictureIO = new IntersectionObserver((entries) => {
     entries.forEach(e => {
         if (!e.isIntersecting) return;
         const pic = e.target;
         const img = pic.querySelector('img');
         const source = pic.querySelector('source[type="image/webp"]');
+        const idx = Number(pic.closest('.scene')?.dataset.idx || 0);
 
-        // If this scene was already hydrated by the loader step, skip
+        // If already hydrated by the loader step, skip
         if (!img.getAttribute('data-src')) { pictureIO.unobserve(pic); return; }
 
-        const idx = Number(pic.closest('.scene')?.dataset.idx || 0);
         const { png, webp } = sources[idx];
         const useWebp = TRY_WEBP && SUPPORTS_WEBP && !!source;
 
@@ -149,6 +142,7 @@ const pictureIO = new IntersectionObserver((entries) => {
             img.setAttribute('src', png);
         }
         img.removeAttribute('data-src');
+
         pictureIO.unobserve(pic);
     });
 }, { root: null, rootMargin: '200% 0px 200% 0px', threshold: 0 });
@@ -173,46 +167,4 @@ function applyFitModes(){
 addEventListener('resize', applyFitModes, { passive:true });
 addEventListener('orientationchange', applyFitModes);
 
-/**** Opacity-only “cross-fade” while scrolling (no blur/parallax) ****/
-const scenes = [...document.querySelectorAll('.scene')];
-let active = new Set();
-let rafId  = null;
-
-const sceneIO = new IntersectionObserver((entries) => {
-    entries.forEach(e => { if (e.isIntersecting) active.add(e.target); else active.delete(e.target); });
-    tick();
-}, { root: null, rootMargin: '40% 0px 40% 0px', threshold: 0 });
-scenes.forEach(s => sceneIO.observe(s));
-
-function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
-function easeInOut(t){ return t*t*(3 - 2*t); }
-
-function render(){
-    const vh = innerHeight;
-
-    active.forEach(scene => {
-        const fig = scene.querySelector('.page-figure');
-        if (!fig) return;
-
-        const r = scene.getBoundingClientRect();
-        const total = r.height - vh;
-        const tRaw  = Math.max(0, Math.min(1, (0 - r.top) / (total || 1)));
-        const easeInOut = t => t*t*(3 - 2*t);
-        const t = easeInOut(tRaw);
-
-        // Fade in from 0.2 → 1.0, then stay at 1.0 (no fade-out at scene end)
-        const alpha = Math.min(1, 0.2 + t * 1.6);
-        fig.style.opacity = alpha.toFixed(3);
-    });
-}
-
-function tick(){
-    if (rafId !== null) return;
-    if (active.size === 0) return;
-    rafId = requestAnimationFrame(() => { rafId = null; render(); });
-}
-
-/* Kickoff */
-applyFitModes();
-tick();
-addEventListener('scroll', tick, { passive:true });
+/* No scroll animations anymore (no fade/parallax/blur) */

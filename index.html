@@ -7,28 +7,31 @@
     <meta name="description" content="Scroll to explore the Noesis brochure.">
     <link rel="stylesheet" href="styles.css">
 
-    <!-- Preload first page for instant paint (adjust name if one-based) -->
+    <!-- Preload first two pages for instant/near-instant paint -->
+    <!-- Change to page-01.* / page-02.* if ZERO_BASED = false -->
     <link rel="preload" as="image" href="assets/pages/page-00.png">
-    <link rel="preload" as="image" href="assets/pages/page-01.webp">
-    <link rel="preload" as="image" href="assets/pages/page-02.webp">
-    <link rel="preload" as="image" href="assets/pages/page-03.webp">
+    <link rel="preload" as="image" href="assets/pages/page-01.png">
 </head>
 <body>
 
-<!-- Loader overlay -->
+<!-- Loader overlay (instant hide when first 7 are ready) -->
 <div id="loader" aria-hidden="true">
     <div class="loader-top">
-        <!-- Replace logo.svg with your own (optional). If missing, fallback text shows. -->
-        <div class="loader-bar"><span class="loader-bar-fill"></span></div>
+        <!-- Optional logo: place at assets/logo.svg -->
+        <img class="loader-logo" src="assets/logo.svg" alt="Noesis" onerror="this.style.display='none'">
+        <div class="loader-title" data-fallback>NOESIS</div>
+        <div class="loader-bar"><span class="loader-bar-fill" style="width:0"></span></div>
     </div>
 
     <figure class="loader-page">
-        <img id="loader-img" alt="Loading brochure…">
+        <picture id="loader-picture">
+            <img id="loader-img" alt="Loading brochure…">
+        </picture>
     </figure>
 </div>
 
-<!-- Main content gets injected by JS -->
-<main id="app"></main>
+<!-- Main app -->
+<main class="scrolly" id="app"></main>
 <script src="script.js"></script>
 </body>
 </html>
