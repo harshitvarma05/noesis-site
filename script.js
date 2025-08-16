@@ -1,20 +1,23 @@
 /**** CONFIG ****/
-const PAGE_COUNT     = 15;    // total brochure pages
-const ZERO_BASED     = true;  // true if page-00.png exists; false if page-01.png
-const TRY_WEBP       = true;  // set true if you also upload .webp alongside .png
-const PRELOAD_FIRSTN = 8;     // how many pages the loader must finish before hiding
+const PAGE_COUNT      = 15;   // total brochure pages
+const ZERO_BASED      = true; // true if page-00.png exists; false if page-01.png
+const TRY_WEBP        = true; // set true if you also upload .webp alongside .png
+const PRELOAD_FIRSTN  = 7;    // loader waits for pages 1..N in SEQUENCE
+
+/**** UTIL ****/
+const pad2 = n => String(n).padStart(2,'0');
 
 /* Detect WebP support (once) */
 const SUPPORTS_WEBP = (() => {
-    try { const c = document.createElement('canvas');
+    try {
+        const c = document.createElement('canvas');
         return !!(c.getContext && c.toDataURL('image/webp').indexOf('data:image/webp') === 0);
     } catch { return false; }
 })();
 
-/**** Build scenes (no extra content, just your images) ****/
+/**** Build scene DOM (no extra content, just your images) ****/
 const app = document.getElementById('app');
-const sources = []; // per-page {png, webp}
-const pad2 = n => String(n).padStart(2,'0');
+const sources = []; // per-page { png, webp }
 
 for (let i = 0; i < PAGE_COUNT; i++) {
     const n = ZERO_BASED ? i : i + 1;
@@ -39,58 +42,27 @@ for (let i = 0; i < PAGE_COUNT; i++) {
     sources.push({ png, webp, idx: i });
 }
 
-/**** Loader (page 1 preview + progress bar) ****/
-const loaderEl = document.getElementById('loader');
-const loaderImg = document.getElementById('loader-img');
+/**** Loader elements ****/
+const loaderEl      = document.getElementById('loader');
+const loaderImg     = document.getElementById('loader-img');
 const loaderBarFill = document.querySelector('.loader-bar-fill');
 
-(function initLoaderFirstPage(){
-    const first = sources[0];
-    if (!first) return hideLoader(0);
-    const url = (TRY_WEBP && SUPPORTS_WEBP) ? first.webp : first.png;
-    loaderImg.src = url;
-    loaderImg.setAttribute('fetchpriority', 'high');
-})();
-
-/* --- Preload the first N scenes “for real” (set DOM src/srcset) --- */
-const MUST_PRELOAD = Math.min(PRELOAD_FIRSTN, PAGE_COUNT);
-let preloadDone = 0;
-
-// prevent double counting the same <img>
-const counted = new WeakSet();
-
-function updateLoaderProgress(){
-    const pct = Math.round((preloadDone / MUST_PRELOAD) * 100);
-    loaderBarFill.style.width = Math.max(10, pct) + '%';
-    if (preloadDone >= MUST_PRELOAD) {
-        setTimeout(() => hideLoader(200), 150);
-    }
+function hideLoader(delay=200){
+    setTimeout(() => loaderEl?.classList.add('hidden'), delay);
 }
 
-function markWhenComplete(img){
-    if (!img) return;
-    if (img.complete) {
-        if (!counted.has(img)) { counted.add(img); preloadDone++; updateLoaderProgress(); }
-        return;
-    }
-    img.addEventListener('load', () => {
-        if (!counted.has(img)) { counted.add(img); preloadDone++; updateLoaderProgress(); }
-    }, { once:true });
-    img.addEventListener('error', () => {
-        if (!counted.has(img)) { counted.add(img); preloadDone++; updateLoaderProgress(); }
-    }, { once:true });
-}
-
+/**** Hydrate a scene (set real src/srcset into its <picture>) ****/
 function hydrateScene(idx){
     const sec = document.querySelector(`.scene[data-idx="${idx}"]`);
     if (!sec) return;
-    const pic = sec.querySelector('picture');
-    const img = pic.querySelector('img');
+    const pic    = sec.querySelector('picture');
+    const img    = pic.querySelector('img');
     const source = pic.querySelector('source[type="image/webp"]');
     const { png, webp } = sources[idx];
 
-    // Prefer WebP if supported
-    if (TRY_WEBP && SUPPORTS_WEBP && source) {
+    const useWebp = TRY_WEBP && SUPPORTS_WEBP && !!source;
+
+    if (useWebp) {
         source.setAttribute('srcset', webp);
         source.removeAttribute('data-srcset');
         img.setAttribute('src', webp);
@@ -99,34 +71,77 @@ function hydrateScene(idx){
     }
     img.removeAttribute('data-src');
 
-    // Prioritize the first couple above the fold
+    // Higher priority for first couple of pages
     if (idx <= 1) img.setAttribute('fetchpriority', 'high');
-    else img.setAttribute('fetchpriority', 'auto');
-
-    // Count completion for the loader
-    markWhenComplete(img);
 }
 
-// Kick off hydration for the first N pages right away
-for (let i = 0; i < MUST_PRELOAD; i++) hydrateScene(i);
+/**** Sequential preload for the first N pages ****/
+const MUST_PRELOAD = Math.min(PRELOAD_FIRSTN, PAGE_COUNT);
+let currentPreload = 0;
 
-function hideLoader(delay=150){ setTimeout(() => loaderEl?.classList.add('hidden'), delay); }
+function updateLoaderBar(){
+    const pct = Math.round((currentPreload / MUST_PRELOAD) * 100);
+    loaderBarFill.style.width = pct + '%';
+    if (currentPreload >= MUST_PRELOAD) {
+        hideLoader(250);
+    }
+}
 
-/**** Lazy-load the remaining scenes when they approach ****/
+function preloadNextInOrder(){
+    if (currentPreload >= MUST_PRELOAD) return;
+
+    const idx = currentPreload;
+    const { png, webp } = sources[idx];
+    const url = (TRY_WEBP && SUPPORTS_WEBP) ? webp : png;
+
+    // For the loader preview (page 1)
+    if (idx === 0) {
+        loaderImg.src = url;
+        loaderImg.setAttribute('fetchpriority', 'high');
+    }
+
+    const probe = new Image();
+    probe.decoding = 'async';
+    probe.loading  = 'eager';
+    probe.src = url;
+
+    const done = () => {
+        // Hydrate this page in the DOM so it’s display-ready
+        hydrateScene(idx);
+        // Update fit mode once the real <img> in the scene completes
+        const img = document.querySelector(`.scene[data-idx="${idx}"] img`);
+        if (img) {
+            if (img.complete) applyFitModes();
+            else img.addEventListener('load', applyFitModes, { once:true });
+        }
+        currentPreload++;
+        updateLoaderBar();
+        preloadNextInOrder(); // chain to the next page
+    };
+
+    probe.onload = done;
+    probe.onerror = done; // count as done to avoid stalling the loader forever
+}
+
+// Kick off the sequential chain
+preloadNextInOrder();
+
+/**** Lazy-load remaining scenes when they approach (skips already hydrated ones) ****/
 const pictureIO = new IntersectionObserver((entries) => {
     entries.forEach(e => {
         if (!e.isIntersecting) return;
         const pic = e.target;
         const img = pic.querySelector('img');
         const source = pic.querySelector('source[type="image/webp"]');
-        const idx = Number(pic.closest('.scene')?.dataset.idx || 0);
 
         // If this scene was already hydrated by the loader step, skip
         if (!img.getAttribute('data-src')) { pictureIO.unobserve(pic); return; }
 
-        // Otherwise hydrate now
+        const idx = Number(pic.closest('.scene')?.dataset.idx || 0);
         const { png, webp } = sources[idx];
-        if (TRY_WEBP && SUPPORTS_WEBP && source) {
+        const useWebp = TRY_WEBP && SUPPORTS_WEBP && !!source;
+
+        if (useWebp) {
             source.setAttribute('srcset', webp);
             source.removeAttribute('data-srcset');
             img.setAttribute('src', webp);
@@ -134,7 +149,6 @@ const pictureIO = new IntersectionObserver((entries) => {
             img.setAttribute('src', png);
         }
         img.removeAttribute('data-src');
-
         pictureIO.unobserve(pic);
     });
 }, { root: null, rootMargin: '200% 0px 200% 0px', threshold: 0 });
@@ -146,7 +160,11 @@ function applyFitModes(){
     const vw = innerWidth, vh = innerHeight, vAspect = vh / vw;
     document.querySelectorAll('.page-figure img').forEach(img => {
         const fig = img.closest('.page-figure');
-        if (!img.complete || !img.naturalWidth) { img.addEventListener('load', applyFitModes, { once:true }); return; }
+        if (!fig) return;
+        if (!img.complete || !img.naturalWidth) {
+            img.addEventListener('load', applyFitModes, { once:true });
+            return;
+        }
         const iAspect = img.naturalHeight / img.naturalWidth;
         fig.classList.toggle('fit-height', iAspect > vAspect);
         fig.classList.toggle('fit-width',  iAspect <= vAspect);
@@ -155,7 +173,7 @@ function applyFitModes(){
 addEventListener('resize', applyFitModes, { passive:true });
 addEventListener('orientationchange', applyFitModes);
 
-/**** Opacity-only animation (no blur, no parallax) ****/
+/**** Opacity-only “cross-fade” while scrolling (no blur/parallax) ****/
 const scenes = [...document.querySelectorAll('.scene')];
 let active = new Set();
 let rafId  = null;
@@ -178,7 +196,7 @@ function render(){
         const total = r.height - vh;
         const tRaw  = clamp((0 - r.top) / (total || 1), 0, 1);
         const t     = easeInOut(tRaw);
-        const alpha = t < 0.2 ? (0.1 + t*0.6) : (0.6 - t*0.2);
+        const alpha = t < 0.5 ? (0.2 + t*1.6) : (1.2 - t*0.8); // 0.2 -> 1.0 -> 0.4
         fig.style.opacity = alpha.toFixed(3);
     });
 }
