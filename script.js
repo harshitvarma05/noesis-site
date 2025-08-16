@@ -1,4 +1,10 @@
 /**** CONFIG ****/
+const SUPPORTS_WEBP = (function(){
+    try {
+        const c = document.createElement('canvas');
+        return !!(c.getContext && c.toDataURL('image/webp').indexOf('data:image/webp') === 0);
+    } catch { return false; }
+})();
 const PAGE_COUNT   = 15;     // total brochure pages
 const ZERO_BASED   = true;   // true if page-00.png exists, else false for page-01.png
 const USE_BLUR     = true;   // blur looks nice but is heavy; auto-off on low-power
