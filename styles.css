@@ -26,7 +26,9 @@ img { display:block; width:100%; height:auto; }
 
 .page-figure{
     margin:0;
-    width:min(1000px, 92vw);
+    /* wrapper itself can scale via transform; let image size inside it */
+    width:auto;
+    max-width:min(1000px, 96vw);
     transform-origin:center;
     transform: translateY(var(--y)) scale(var(--scale));
     filter: blur(var(--blur));
@@ -36,8 +38,28 @@ img { display:block; width:100%; height:auto; }
     box-shadow: 0 18px 60px rgba(0,0,0,.35);
     border-radius:10px;
     background:#0e1016;
-    backface-visibility: hidden;
-    transform-style: preserve-3d;
+    backface-visibility:hidden;
+    transform-style:preserve-3d;
+}
+
+/* default: image scales normally */
+.page-figure img{
+    display:block;
+    width:100%;
+    height:auto;
+}
+
+/* when the image is taller than the viewport, fit by height */
+.page-figure.fit-height img{
+    height:92vh;        /* keep a little breathing room */
+    width:auto;
+    max-width:96vw;
+}
+
+/* when the image is wider than the viewport, fit by width */
+.page-figure.fit-width img{
+    width:min(1000px, 96vw);
+    max-height:92vh;    /* avoid vertical cropping on laptops */
 }
 
 /* subtle gradient background with hue shift driven by --mix */

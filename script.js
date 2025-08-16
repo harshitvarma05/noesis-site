@@ -98,6 +98,33 @@ function tick(){
     });
 }
 
+
+
 addEventListener('scroll', tick, { passive: true });
 addEventListener('resize', tick, { passive: true });
 tick(); // initial
+
+function applyFitModes(){
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const vAspect = vh / vw; // viewport aspect
+
+    document.querySelectorAll('.page-figure img').forEach(img => {
+        const fig = img.parentElement;
+        // if not loaded yet, wait; then compute
+        if (!img.complete || !img.naturalWidth) {
+            img.addEventListener('load', applyFitModes, { once:true });
+            return;
+        }
+        const iAspect = img.naturalHeight / img.naturalWidth;
+
+        // if image is "taller" than viewport, fit by height, else fit by width
+        fig.classList.toggle('fit-height', iAspect > vAspect);
+        fig.classList.toggle('fit-width',  iAspect <= vAspect);
+    });
+}
+
+// run once after DOM is ready and again on resize/orientation
+applyFitModes();
+addEventListener('resize', applyFitModes, { passive:true });
+addEventListener('orientationchange', applyFitModes);
