@@ -4,7 +4,6 @@ const ZERO_BASED      = true; // true if page-00.png exists; false if page-01.pn
 const TRY_WEBP        = true; // true if you also upload .webp files
 const PRELOAD_FIRSTN  = 7;    // loader waits for pages 1..N in SEQUENCE
 
-/**** UTIL ****/
 const pad2 = n => String(n).padStart(2,'0');
 
 /* Detect WebP support (once) */
@@ -20,7 +19,6 @@ const conn = navigator.connection || {};
 const SAVE_DATA = !!conn.saveData;
 const VERY_SLOW = ['slow-2g','2g'].includes(conn.effectiveType);
 
-/**** Build scenes (no extra content, just your images) ****/
 const app = document.getElementById('app');
 const sources = []; // per-page { png, webp }
 
@@ -47,12 +45,10 @@ for (let i = 0; i < PAGE_COUNT; i++) {
     sources.push({ png, webp, idx: i });
 }
 
-/**** Loader elements ****/
 const loaderEl      = document.getElementById('loader');
 const loaderImg     = document.getElementById('loader-img');
 const loaderBarFill = document.querySelector('.loader-bar-fill');
 
-/**** Hydrate a scene (set real src/srcset into its <picture>) ****/
 function hydrateScene(idx){
     const sec = document.querySelector(`.scene[data-idx="${idx}"]`);
     if (!sec) return;
@@ -82,7 +78,6 @@ function hydrateScene(idx){
     else img.addEventListener('load', applyFitModes, { once:true });
 }
 
-/**** Sequential preload for the first N pages (loader) ****/
 const MUST_PRELOAD = Math.min(PRELOAD_FIRSTN, PAGE_COUNT);
 let currentPreload = 0;
 
@@ -126,10 +121,8 @@ function preloadNextInOrder(){
     probe.onerror = done;      // count error to avoid stalling
 }
 
-// Kick off the sequential chain for the loader
 preloadNextInOrder();
 
-/**** Background preload for remaining pages (in order) ****/
 function startBackgroundPreload(){
     // Be gentle on very slow networks or when Save-Data is on
     if (SAVE_DATA || VERY_SLOW) return;
@@ -162,7 +155,6 @@ function startBackgroundPreload(){
     (window.requestIdleCallback || setTimeout)(step, 100);
 }
 
-/**** IntersectionObserver (still there as a safety net) ****/
 const pictureIO = new IntersectionObserver((entries) => {
     entries.forEach(e => {
         if (!e.isIntersecting) return;
@@ -178,7 +170,6 @@ const pictureIO = new IntersectionObserver((entries) => {
 
 document.querySelectorAll('.page-figure picture').forEach(p => pictureIO.observe(p));
 
-/**** Fit-to-device (avoid cropping/letterboxing) ****/
 function applyFitModes(){
     const vw = innerWidth, vh = innerHeight, vAspect = vh / vw;
     document.querySelectorAll('.page-figure img').forEach(img => {
@@ -195,5 +186,3 @@ function applyFitModes(){
 }
 addEventListener('resize', applyFitModes, { passive:true });
 addEventListener('orientationchange', applyFitModes);
-
-/* No scroll animations (no fade/parallax/blur) */
