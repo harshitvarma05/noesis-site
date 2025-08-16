@@ -95,7 +95,7 @@ const pictureIO = new IntersectionObserver((entries) => {
 
         pictureIO.unobserve(pic);
     });
-}, { root: null, rootMargin: '120% 0px 120% 0px', threshold: 0 });
+}, { root: null, rootMargin: '200% 0px 200% 0px', threshold: 0 });
 
 document.querySelectorAll('.page-figure picture').forEach(p => pictureIO.observe(p));
 
@@ -149,6 +149,25 @@ function render(){
         fig.style.opacity = alpha.toFixed(3);
     });
 }
+(function eagerSecondScene(){
+    const sec = document.querySelector('.scene[data-idx="1"]');
+    if (!sec) return;
+    const pic = sec.querySelector('picture');
+    const img = pic.querySelector('img');
+    const source = pic.querySelector('source[type="image/webp"]');
+    const { png, webp } = sources[1];
+
+    // Prefer WebP if we’re using it and the browser supports it
+    if (TRY_WEBP && SUPPORTS_WEBP && source) {
+        source.setAttribute('srcset', webp);
+        source.removeAttribute('data-srcset');
+    }
+    img.setAttribute('src', (TRY_WEBP && SUPPORTS_WEBP) ? webp : png);
+    img.removeAttribute('data-src');
+
+    // Ask browser to prioritize this above-the-fold image
+    img.setAttribute('fetchpriority', 'high');
+})();
 
 function tick(){
     if (rafId !== null) return;
