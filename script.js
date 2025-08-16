@@ -1,6 +1,6 @@
 // === CONFIG ===
 // Change this to how many pages you exported to assets/pages/
-const PAGE_COUNT = 12; // <-- set to your number
+const PAGE_COUNT = 15; // <-- set to your number
 const ZERO_BASED = true; // true if files start at page-00.png, false if page-01.png
 
 const app = document.getElementById('app');
