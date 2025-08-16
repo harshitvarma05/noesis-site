@@ -2,7 +2,7 @@
 const PAGE_COUNT      = 15;   // total brochure pages
 const ZERO_BASED      = true; // true if page-00.png exists; false if page-01.png
 const TRY_WEBP        = true; // set true if you also upload .webp alongside .png
-const PRELOAD_FIRSTN  = 7;    // loader waits for pages 1 to N in SEQUENCE
+const PRELOAD_FIRSTN  = 5;    // loader waits for pages 1 to N in SEQUENCE
 
 /**** UTIL ****/
 const pad2 = n => String(n).padStart(2,'0');
@@ -189,14 +189,19 @@ function easeInOut(t){ return t*t*(3 - 2*t); }
 
 function render(){
     const vh = innerHeight;
+
     active.forEach(scene => {
         const fig = scene.querySelector('.page-figure');
         if (!fig) return;
+
         const r = scene.getBoundingClientRect();
         const total = r.height - vh;
-        const tRaw  = clamp((0 - r.top) / (total || 1), 0, 1);
-        const t     = easeInOut(tRaw);
-        const alpha = t < 0.2 ? (0.1 + t*0.6) : (0.6 - t*0.4); // No idea how this works, but it controls the fade input
+        const tRaw  = Math.max(0, Math.min(1, (0 - r.top) / (total || 1)));
+        const easeInOut = t => t*t*(3 - 2*t);
+        const t = easeInOut(tRaw);
+
+        // Fade in from 0.2 → 1.0, then stay at 1.0 (no fade-out at scene end)
+        const alpha = Math.min(1, 0.2 + t * 1.6);
         fig.style.opacity = alpha.toFixed(3);
     });
 }
