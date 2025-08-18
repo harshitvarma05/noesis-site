@@ -1,5 +1,5 @@
 /**** CONFIG ****/
-const PAGE_COUNT      = 15;   // total brochure pages
+const PAGE_COUNT      = 16;   // total brochure pages
 const ZERO_BASED      = true; // true if page-00.png exists; false if page-01.png
 const TRY_WEBP        = true; // true if you also upload .webp files
 const PRELOAD_FIRSTN  = 7;    // loader waits for pages 1..N in SEQUENCE
