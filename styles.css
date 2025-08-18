@@ -177,6 +177,6 @@ body::before{
     }
     .contact-label {
         display: block;
-        margin-bottom: 4px;
+        margin-bottom: 12px;
     }
 }
